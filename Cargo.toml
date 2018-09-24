@@ -1,0 +1,6 @@
+[package]
+name = "NVM"
+version = "0.1.0"
+authors = ["Turing Disciple <mncubenashe@gmail.com>"]
+
+[dependencies]
