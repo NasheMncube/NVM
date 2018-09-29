@@ -1,5 +1,5 @@
 #[derive(Debug, PartialEq)]
-pub enum InstrSet {
+pub enum Instr {
     PUSHi, // PUSH argument to stack
     PUSHA, // PUSH value in register A to stack
     PUSHB, // ...................... B to stack
@@ -42,26 +42,52 @@ pub struct VM {
     X: u8,
     Y: u8, 
     SP: u8,
-    PC: *const InstrSet,
     CC: Flag,
+    PC: Option<Instr>,
+    program: Vec<Instr>,
 
     mem: [u8; 256],
 }
 
 
 impl VM {
-    fn new(program: &[InstrSet]) -> VM {
+    fn new(program: Vec<Instr>) -> VM {
         VM {
            A: 0,
            B: 0,
            X: 0,
            Y: 0,
            SP: 255,
-           PC: &program[0],
            CC: Flag::DEFAULT,
-
+           PC: None,
+           program,
            mem: [0; 256],
         }
+    }
+
+    fn execute(&mut self) {
+        loop {
+            match self.program.pop() {
+                Some(instr) => {
+                    match instr {
+                        Instr::ADDA 
+                        | Instr::ADDB 
+                        | Instr::ADDX
+                        | Instr::ADDY => self.add_to_register(),
+
+                        Instr::HALT   => break,
+                        _             => break,
+                    }
+                    self.PC = Some(instr);
+                },
+                None => { self.PC = None; break; }
+            }
+
+        }
+    }
+
+    fn add_to_register(&mut self) {
+        ()
     }
 }
 
@@ -71,14 +97,13 @@ mod tests {
     
     #[test]
     fn initialize_new_VM() {
-        let program = [InstrSet::HALT];
-        let vm = VM::new(&program);
+        let program = vec![Instr::HALT];
+        let vm = VM::new(program);
         assert_eq!(vm.A, 0);
         assert_eq!(vm.B, 0);
         assert_eq!(vm.X, 0);
         assert_eq!(vm.Y, 0);
         assert_eq!(vm.SP, 255);
-        assert_eq!(vm.PC, &program[0]);
         assert_eq!(vm.CC, Flag::DEFAULT);
 
         let mut size = 0;
