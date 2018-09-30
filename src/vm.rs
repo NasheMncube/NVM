@@ -77,7 +77,11 @@ impl VM {
                         Instr::ADDA 
                         | Instr::ADDB 
                         | Instr::ADDX
-                        | Instr::ADDY => self.add_to_register(),
+                        | Instr::ADDY => self.handle_add(),
+                        Instr:SUBA
+                        | Instr::SUBB
+                        | Instr::SUBX
+                        | Instr::SUBY => self.handle_sub(),
 
                         Instr::HALT   => break,
                         _             => break,
@@ -90,7 +94,7 @@ impl VM {
         }
     }
 
-    fn add_to_register(&mut self) {
+    fn handle_add(&mut self) {
         let arg = match self.program.pop().unwrap() {
             Left(x) => x,
             _       => 0,
@@ -123,6 +127,10 @@ impl VM {
             Some(Instr::ADDY) => { self.Y = next_reg_value; },
             _                 => ()
         }
+    }
+
+    fn handle_sub(&mut self) {
+
     }
 }
 
@@ -186,7 +194,7 @@ mod tests {
         vm = VM::new(zero);
         vm.execute();
         assert_eq!(vm.CC, Flag::ZERO);
-        
+
         vm = VM::new(default);
         vm.execute();
         assert_eq!(vm.CC, Flag::DEFAULT);
