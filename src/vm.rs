@@ -1,4 +1,6 @@
-#[derive(Debug, PartialEq)]
+use either::*;
+
+#[derive(Debug, PartialEq, Clone)]
 pub enum Instr {
     PUSHi, // PUSH argument to stack
     PUSHA, // PUSH value in register A to stack
@@ -27,7 +29,7 @@ pub enum Instr {
     HALT,  // HALT execution of VM
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Flag {
     OVERFLOW,
     ZERO,
@@ -36,22 +38,23 @@ pub enum Flag {
     DEFAULT,
 }
 
+#[derive(Clone)]
 pub struct VM {
-    A: u8,
-    B: u8,
-    X: u8,
-    Y: u8, 
+    A: i8,
+    B: i8,
+    X: i8,
+    Y: i8, 
     SP: u8,
     CC: Flag,
     PC: Option<Instr>,
-    program: Vec<Instr>,
+    program: Vec<Either<i8, Instr>>,
 
     mem: [u8; 256],
 }
 
 
 impl VM {
-    fn new(program: Vec<Instr>) -> VM {
+    fn new(program: Vec<Either<i8, Instr>>) -> VM {
         VM {
            A: 0,
            B: 0,
@@ -68,7 +71,8 @@ impl VM {
     fn execute(&mut self) {
         loop {
             match self.program.pop() {
-                Some(instr) => {
+                Some(Right(instr)) => {
+                    self.PC = Some(instr.clone());
                     match instr {
                         Instr::ADDA 
                         | Instr::ADDB 
@@ -78,16 +82,47 @@ impl VM {
                         Instr::HALT   => break,
                         _             => break,
                     }
-                    self.PC = Some(instr);
                 },
-                None => { self.PC = None; break; }
+                None => { self.PC = None; break; },
+                _ => (),
             }
 
         }
     }
 
     fn add_to_register(&mut self) {
-        ()
+        let arg = match self.program.pop().unwrap() {
+            Left(x) => x,
+            _       => 0,
+        };
+        let reg_value = match self.PC {
+            Some(Instr::ADDA) => (self.A),
+            Some(Instr::ADDB) => (self.B),
+            Some(Instr::ADDX) => (self.X),
+            Some(Instr::ADDY) => (self.Y),
+            _           => 0,
+        };
+
+        let next_reg_value = {
+            if 127 - (reg_value) < arg{ 
+                self.CC = Flag::OVERFLOW;
+                reg_value 
+            } else if (reg_value + arg) == 0 { 
+                self.CC = Flag::ZERO; 
+                0
+            } else {
+                self.CC = Flag::DEFAULT;
+                arg + reg_value
+            }
+        };
+
+        match self.PC {
+            Some(Instr::ADDA) => { self.A = next_reg_value },
+            Some(Instr::ADDB) => { self.B = next_reg_value; },
+            Some(Instr::ADDX) => { self.X = next_reg_value; },
+            Some(Instr::ADDY) => { self.Y = next_reg_value; },
+            _                 => ()
+        }
     }
 }
 
@@ -96,8 +131,8 @@ mod tests {
     use super::*;
     
     #[test]
-    fn initialize_new_VM() {
-        let program = vec![Instr::HALT];
+    fn initialize_new_vm() {
+        let program = vec![Right(Instr::HALT)];
         let vm = VM::new(program);
         assert_eq!(vm.A, 0);
         assert_eq!(vm.B, 0);
@@ -112,5 +147,48 @@ mod tests {
             assert_eq!(*x, 0);
         }
         assert_eq!(size, 256);
+    }
+
+    #[test]
+    fn adding_to_registers() {
+        let add_to_a = vec![Left(10), Right(Instr::ADDA)];
+        let add_to_b = vec![Left(10), Right(Instr::ADDB)];
+        let add_to_x = vec![Left(10), Right(Instr::ADDX)];
+        let add_to_y = vec![Left(10), Right(Instr::ADDY)];
+
+        let mut vm = VM::new(add_to_a);
+        vm.execute();
+        assert_eq!(10, vm.A);
+
+        vm = VM::new(add_to_b);
+        vm.execute();
+        assert_eq!(10, vm.B);
+
+        vm = VM::new(add_to_x);
+        vm.execute();
+        assert_eq!(10, vm.X);
+
+        vm = VM::new(add_to_y);
+        vm.execute();
+        assert_eq!(10, vm.Y);
+    }
+
+    #[test]
+    fn flag_setting_on_addition_to_register() {
+        let overflow = vec![Left(127), Right(Instr::ADDA), Left(1), Right(Instr::ADDA)];
+        let zero = vec![Left(0), Right(Instr::ADDA)];
+        let default = vec![Left(1), Right(Instr::ADDA)];
+
+        let mut vm = VM::new(overflow);
+        vm.execute();
+        assert_eq!(vm.CC, Flag::OVERFLOW);
+
+        vm = VM::new(zero);
+        vm.execute();
+        assert_eq!(vm.CC, Flag::ZERO);
+        
+        vm = VM::new(default);
+        vm.execute();
+        assert_eq!(vm.CC, Flag::DEFAULT);
     }
 }
