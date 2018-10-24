@@ -39,22 +39,23 @@ pub enum Flag {
 }
 
 #[derive(Clone)]
+#[allow(non_snake_case)]
 pub struct VM {
-    A: i8,
-    B: i8,
-    X: i8,
-    Y: i8, 
+    A: u8,
+    B: u8,
+    X: u8,
+    Y: u8, 
     SP: u8,
     CC: Flag,
     PC: Option<Instr>,
-    program: Vec<Either<i8, Instr>>,
+    program: Vec<Either<u8, Instr>>,
 
     mem: [u8; 256],
 }
 
 
 impl VM {
-    fn new(program: Vec<Either<i8, Instr>>) -> VM {
+    fn new(program: Vec<Either<u8, Instr>>) -> VM {
         VM {
            A: 0,
            B: 0,
@@ -108,7 +109,7 @@ impl VM {
         };
 
         let next_reg_value = {
-            if 127 - reg_value < arg{ 
+            if 255 - reg_value < arg{ 
                 self.CC = Flag::OVERFLOW;
                 reg_value 
             } else if (reg_value + arg) == 0 { 
@@ -215,7 +216,7 @@ mod tests {
 
     #[test]
     fn flag_setting_on_addition_to_register() {
-        let overflow = vec![Left(127), Right(Instr::ADDA), Left(1), Right(Instr::ADDA)];
+        let overflow = vec![Left(255), Right(Instr::ADDA), Left(1), Right(Instr::ADDA)];
         let zero = vec![Left(0), Right(Instr::ADDA)];
         let default = vec![Left(1), Right(Instr::ADDA)];
 
@@ -254,5 +255,19 @@ mod tests {
         vm = VM::new(sub_from_y);
         vm.execute();
         assert_eq!(32, vm.Y);
+    }
+
+    #[test]
+    fn setting_flags_on_substraction() {
+        let overflow = vec![Left(10), Right(Instr::SUBA)];
+        let zero     = vec![Left(10), Right(Instr::SUBA), Left(10), Right(Instr::ADDA)];
+
+        let mut vm = VM::new(overflow);
+        vm.execute();
+        assert_eq!(vm.CC, Flag::OVERFLOW);
+
+        vm = VM::new(zero);
+        vm.execute();
+        assert_eq!(vm.CC, Flag::ZERO);
     }
 }
