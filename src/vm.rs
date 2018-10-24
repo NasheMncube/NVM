@@ -78,7 +78,7 @@ impl VM {
                         | Instr::ADDB 
                         | Instr::ADDX
                         | Instr::ADDY => self.handle_add(),
-                        Instr:SUBA
+                        Instr::SUBA
                         | Instr::SUBB
                         | Instr::SUBX
                         | Instr::SUBY => self.handle_sub(),
@@ -100,15 +100,15 @@ impl VM {
             _       => 0,
         };
         let reg_value = match self.PC {
-            Some(Instr::ADDA) => (self.A),
-            Some(Instr::ADDB) => (self.B),
-            Some(Instr::ADDX) => (self.X),
-            Some(Instr::ADDY) => (self.Y),
+            Some(Instr::ADDA) => self.A,
+            Some(Instr::ADDB) => self.B,
+            Some(Instr::ADDX) => self.X,
+            Some(Instr::ADDY) => self.Y,
             _           => 0,
         };
 
         let next_reg_value = {
-            if 127 - (reg_value) < arg{ 
+            if 127 - reg_value < arg{ 
                 self.CC = Flag::OVERFLOW;
                 reg_value 
             } else if (reg_value + arg) == 0 { 
@@ -121,7 +121,7 @@ impl VM {
         };
 
         match self.PC {
-            Some(Instr::ADDA) => { self.A = next_reg_value },
+            Some(Instr::ADDA) => { self.A = next_reg_value; },
             Some(Instr::ADDB) => { self.B = next_reg_value; },
             Some(Instr::ADDX) => { self.X = next_reg_value; },
             Some(Instr::ADDY) => { self.Y = next_reg_value; },
@@ -130,7 +130,39 @@ impl VM {
     }
 
     fn handle_sub(&mut self) {
+        let arg = match self.program.pop().unwrap() {
+            Left(x) => x,
+            _       => 0,
+        };
 
+        let reg_value = match self.PC {
+            Some(Instr::SUBA) => self.A,
+            Some(Instr::SUBB) => self.B,
+            Some(Instr::SUBX) => self.X,
+            Some(Instr::SUBY) => self.Y,
+            _ => 0,
+        };
+
+        let next_reg_value = {
+            if reg_value < arg {
+                self.CC = Flag::OVERFLOW;
+                reg_value
+            } else if reg_value - arg == 0 {
+                self.CC = Flag::ZERO;
+                0
+            } else {
+                self.CC = Flag::DEFAULT;
+                reg_value - arg
+            }
+        };
+
+        match self.PC {
+            Some(Instr::SUBA) => {self.A = next_reg_value;},
+            Some(Instr::SUBB) => {self.B = next_reg_value;},
+            Some(Instr::SUBX) => {self.X = next_reg_value;},
+            Some(Instr::SUBY) => {self.Y = next_reg_value;},
+            _                 => ()
+        }
     }
 }
 
@@ -198,5 +230,29 @@ mod tests {
         vm = VM::new(default);
         vm.execute();
         assert_eq!(vm.CC, Flag::DEFAULT);
+    }
+
+    #[test]
+    fn subtracting_from_registers() {
+        let sub_from_a = vec![Left(10), Right(Instr::SUBA), Left(42), Right(Instr::ADDA)];
+        let sub_from_b = vec![Left(10), Right(Instr::SUBB), Left(42), Right(Instr::ADDB)];
+        let sub_from_x = vec![Left(10), Right(Instr::SUBX), Left(42), Right(Instr::ADDX)];
+        let sub_from_y = vec![Left(10), Right(Instr::SUBY), Left(42), Right(Instr::ADDY)];
+
+        let mut vm = VM::new(sub_from_a);
+        vm.execute();
+        assert_eq!(32, vm.A);
+
+        vm = VM::new(sub_from_b);
+        vm.execute();
+        assert_eq!(32, vm.B);
+
+        vm = VM::new(sub_from_x);
+        vm.execute();
+        assert_eq!(32, vm.X);
+
+        vm = VM::new(sub_from_y);
+        vm.execute();
+        assert_eq!(32, vm.Y);
     }
 }
