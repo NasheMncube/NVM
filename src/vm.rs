@@ -45,7 +45,7 @@ pub struct VM {
     B: u8,
     X: u8,
     Y: u8, 
-    SP: u8,
+    SP: usize,
     CC: Flag,
     PC: Option<Instr>,
     program: Vec<Either<u8, Instr>>,
@@ -83,6 +83,15 @@ impl VM {
                         | Instr::SUBB
                         | Instr::SUBX
                         | Instr::SUBY => self.handle_sub(),
+                        Instr::PUSHi
+                        | Instr::PUSHA
+                        | Instr::PUSHB
+                        | Instr::PUSHX
+                        | Instr::PUSHY => self.handle_push(),
+                        Instr::POPA
+                        | Instr::POPB
+                        | Instr::POPX
+                        | Instr::POPY  => self.handle_pop(),
 
                         Instr::HALT   => break,
                         _             => break,
@@ -92,6 +101,54 @@ impl VM {
                 _ => (),
             }
 
+        }
+    }
+
+    fn handle_push(&mut self) {
+
+        let push = |arg: u8| {
+            if self.SP == 0 {
+                ()
+            } else {
+                self.mem[self.SP] = arg;
+                self.SP -= 1;
+            } 
+        };
+
+        match self.PC {
+            Some(Instr::PUSHA) => push(self.A),
+            Some(Instr::PUSHB) => push(self.B),
+            Some(Instr::PUSHX) => push(self.X),
+            Some(Instr::PUSHY) => push(self.Y),
+            Some(Instr::PUSHi) => {
+                let arg = match self.program.pop().unwrap() {
+                    Left(x) => x,
+                    _       => 0,
+                };
+                push(arg);
+            }
+            None | _ => (),
+        }
+    }
+
+    fn pop(&mut self) -> u8 {
+        if self.SP == 255 {
+            0
+        } else {
+            let arg = self.mem[self.SP];
+            self.SP += 1;
+            arg
+        }
+    }
+
+    fn handle_pop(&mut self) {
+        match self.PC {
+            Some(Instr::POPA) => {self.A = self.pop();},
+            Some(Instr::POPB) => {self.B = self.pop();},
+            Some(Instr::POPX) => {self.X = self.pop();},
+            Some(Instr::POPY) => {self.Y = self.pop();},
+            None | _ => (),
+            
         }
     }
 
@@ -258,7 +315,7 @@ mod tests {
     }
 
     #[test]
-    fn setting_flags_on_substraction() {
+    fn setting_flags_on_subtraction() {
         let overflow = vec![Left(10), Right(Instr::SUBA)];
         let zero     = vec![Left(10), Right(Instr::SUBA), Left(10), Right(Instr::ADDA)];
 
@@ -270,4 +327,20 @@ mod tests {
         vm.execute();
         assert_eq!(vm.CC, Flag::ZERO);
     }
+
+    // #[test]
+    // fn pushing_to_stack() {
+    //     let push_immediate = vec![Left(10), Right(Instr::PUSHi)];
+    //     let push_to_a = vec![Right(Instr::PUSHA), Left(10), Right(Instr::ADDA)];
+    //     let push_to_b = vec![Right(Instr::PUSHB), Left(10), Right(Instr::ADDB)];
+    //     let push_to_x = vec![Right(Instr::PUSHX), Left(10), Right(Instr::ADDX)];
+    //     let push_to_y = vec![Right(Instr::PUSHY), Left(10), Right(Instr::ADDY)];
+
+    //     let mut vm = VM::new(push_immediate);
+    //     vm.execute();
+    //     assert_eq!(vm.mem[vm.SP+1], 10);
+    //     // vm = VM::new(push_to_a);
+    //     // vm.execute();
+    //     // assert_eq!(vm.mem[vm.])
+    // }
 }
