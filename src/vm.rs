@@ -106,28 +106,22 @@ impl VM {
 
     fn handle_push(&mut self) {
 
-        let push = |arg: u8| {
-            if self.SP == 0 {
-                ()
-            } else {
-                self.mem[self.SP] = arg;
-                self.SP -= 1;
-            } 
-        };
-
-        match self.PC {
-            Some(Instr::PUSHA) => push(self.A),
-            Some(Instr::PUSHB) => push(self.B),
-            Some(Instr::PUSHX) => push(self.X),
-            Some(Instr::PUSHY) => push(self.Y),
-            Some(Instr::PUSHi) => {
-                let arg = match self.program.pop().unwrap() {
+        let arg = match self.PC {
+            Some(Instr::PUSHA) => self.A,
+            Some(Instr::PUSHB) => self.B,
+            Some(Instr::PUSHX) => self.X,
+            Some(Instr::PUSHY) => self.Y,
+            Some(Instr::PUSHi) => 
+                match self.program.pop().unwrap(){
                     Left(x) => x,
                     _       => 0,
-                };
-                push(arg);
             }
-            None | _ => (),
+            _ => 0,
+        };
+
+        if self.SP > 0 {
+            self.mem[self.SP] = arg;
+            self.SP -= 1;
         }
     }
 
@@ -328,19 +322,32 @@ mod tests {
         assert_eq!(vm.CC, Flag::ZERO);
     }
 
-    // #[test]
-    // fn pushing_to_stack() {
-    //     let push_immediate = vec![Left(10), Right(Instr::PUSHi)];
-    //     let push_to_a = vec![Right(Instr::PUSHA), Left(10), Right(Instr::ADDA)];
-    //     let push_to_b = vec![Right(Instr::PUSHB), Left(10), Right(Instr::ADDB)];
-    //     let push_to_x = vec![Right(Instr::PUSHX), Left(10), Right(Instr::ADDX)];
-    //     let push_to_y = vec![Right(Instr::PUSHY), Left(10), Right(Instr::ADDY)];
+    #[test]
+    fn pushing_to_stack() {
+        let push_immediate = vec![Left(10), Right(Instr::PUSHi)];
+        let push_from_a = vec![Right(Instr::PUSHA), Left(10), Right(Instr::ADDA)];
+        let push_from_b = vec![Right(Instr::PUSHB), Left(10), Right(Instr::ADDB)];
+        let push_from_x = vec![Right(Instr::PUSHX), Left(10), Right(Instr::ADDX)];
+        let push_from_y = vec![Right(Instr::PUSHY), Left(10), Right(Instr::ADDY)];
 
-    //     let mut vm = VM::new(push_immediate);
-    //     vm.execute();
-    //     assert_eq!(vm.mem[vm.SP+1], 10);
-    //     // vm = VM::new(push_to_a);
-    //     // vm.execute();
-    //     // assert_eq!(vm.mem[vm.])
-    // }
+        let mut vm = VM::new(push_immediate);
+        vm.execute();
+        assert_eq!(vm.mem[vm.SP+1], 10);
+
+        vm = VM::new(push_from_a);
+        vm.execute();
+        assert_eq!(vm.mem[vm.SP + 1], vm.A);
+
+        vm = VM::new(push_from_b);
+        vm.execute();
+        assert_eq!(vm.mem[vm.SP + 1], vm.B);
+
+        vm = VM::new(push_from_x);
+        vm.execute();
+        assert_eq!(vm.mem[vm.SP + 1], vm.X);
+
+        vm = VM::new(push_from_y);
+        vm.execute();
+        assert_eq!(vm.mem[vm.SP + 1], vm.Y);
+    }
 }
