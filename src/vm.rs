@@ -92,6 +92,10 @@ impl VM {
                         | Instr::POPB
                         | Instr::POPX
                         | Instr::POPY  => self.handle_pop(),
+                        Instr::SETA
+                        | Instr::SETB
+                        | Instr::SETX 
+                        | Instr::SETY => self.set_register(),
 
                         Instr::HALT   => break,
                         _             => break,
@@ -101,6 +105,21 @@ impl VM {
                 _ => (),
             }
 
+        }
+    }
+
+    fn set_register(&mut self) {
+        let arg = match self.program.pop().unwrap() {
+            Left(x) => x,
+            _       => 0,
+        };
+
+        match self.PC {
+            Some(Instr::SETA) => {self.A = arg;},
+            Some(Instr::SETB) => {self.B = arg;},
+            Some(Instr::SETX) => {self.X = arg;},
+            Some(Instr::SETY) => {self.Y = arg;},
+            _           => (),
         }
     }
 
@@ -373,5 +392,29 @@ mod tests {
         vm = VM::new(pop_to_y);
         vm.execute();
         assert_eq!(vm.Y, 12);
+    }
+
+    #[test]
+    fn setting_registers() {
+        let set_a = vec![Left(10), Right(Instr::SETA)];
+        let set_b = vec![Left(20), Right(Instr::SETB)];
+        let set_x = vec![Left(30), Right(Instr::SETX)];
+        let set_y = vec![Left(40), Right(Instr::SETY)];
+
+        let mut vm = VM::new(set_a);
+        vm.execute();
+        assert_eq!(vm.A, 10);
+
+        vm = VM::new(set_b);
+        vm.execute();
+        assert_eq!(vm.B, 20);
+
+        vm = VM::new(set_x);
+        vm.execute();
+        assert_eq!(vm.X, 30);
+
+        vm = VM::new(set_y);
+        vm.execute();
+        assert_eq!(vm.Y, 40);
     }
 }
