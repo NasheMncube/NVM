@@ -129,7 +129,7 @@ impl VM {
         if self.SP == 255 {
             0
         } else {
-            let arg = self.mem[self.SP];
+            let arg = self.mem[self.SP + 1];
             self.SP += 1;
             arg
         }
@@ -349,5 +349,29 @@ mod tests {
         vm = VM::new(push_from_y);
         vm.execute();
         assert_eq!(vm.mem[vm.SP + 1], vm.Y);
+    }
+
+    #[test]
+    fn popping_from_stack() {
+        let pop_to_a = vec![Right(Instr::POPA), Left(42), Right(Instr::PUSHi)];
+        let pop_to_b = vec![Right(Instr::POPB), Left(32), Right(Instr::PUSHi)];
+        let pop_to_x = vec![Right(Instr::POPX), Left(22), Right(Instr::PUSHi)];
+        let pop_to_y = vec![Right(Instr::POPY), Left(12), Right(Instr::PUSHi)];
+
+        let mut vm = VM::new(pop_to_a);
+        vm.execute();
+        assert_eq!(vm.A, 42);
+
+        vm = VM::new(pop_to_b);
+        vm.execute();
+        assert_eq!(vm.B, 32);
+
+        vm = VM::new(pop_to_x);
+        vm.execute();
+        assert_eq!(vm.X, 22);
+
+        vm = VM::new(pop_to_y);
+        vm.execute();
+        assert_eq!(vm.Y, 12);
     }
 }
