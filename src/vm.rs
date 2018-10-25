@@ -48,6 +48,7 @@ pub struct VM {
     SP: usize,
     CC: Flag,
     PC: Option<Instr>,
+    IP: usize,
     program: Vec<Either<u8, Instr>>,
 
     mem: [u8; 256],
@@ -64,6 +65,7 @@ impl VM {
            SP: 255,
            CC: Flag::DEFAULT,
            PC: None,
+           IP: program.len(),
            program,
            mem: [0; 256],
         }
@@ -73,42 +75,58 @@ impl VM {
         loop {
             match self.program.pop() {
                 Some(Right(instr)) => {
-                    self.PC = Some(instr.clone());
+                    self.PC = Some(instr);
                     match instr {
                         Instr::ADDA 
                         | Instr::ADDB 
                         | Instr::ADDX
                         | Instr::ADDY => self.handle_add(),
+
                         Instr::SUBA
                         | Instr::SUBB
                         | Instr::SUBX
                         | Instr::SUBY => self.handle_sub(),
+
                         Instr::PUSHi
                         | Instr::PUSHA
                         | Instr::PUSHB
                         | Instr::PUSHX
                         | Instr::PUSHY => self.handle_push(),
+
                         Instr::POPA
                         | Instr::POPB
                         | Instr::POPX
                         | Instr::POPY  => self.handle_pop(),
+
                         Instr::SETA
                         | Instr::SETB
                         | Instr::SETX 
-                        | Instr::SETY => self.set_register(),
+                        | Instr::SETY => self.handle_set_register(),
 
-                        Instr::HALT   => break,
-                        _             => break,
+                        // Instr::BRN
+                        // | Instr::BRZ
+                        // | Instr::BRO => self.handle_branch(),
+
+                        Instr::HALT | _  => break,
                     }
                 },
                 None => { self.PC = None; break; },
                 _ => (),
             }
-
+            self.IP -= 1;
         }
     }
 
-    fn set_register(&mut self) {
+    // fn handle_branch(&mut self) {
+    //     let branch_address: usize = match self.program.pop().unwrap() {
+    //         Left(x) => x,
+    //         _       => self.IP,
+    //     };
+    // }
+
+    // TODO: Implement instruction pointer
+
+    fn handle_set_register(&mut self) {
         let arg = match self.program.pop().unwrap() {
             Left(x) => x,
             _       => 0,
@@ -251,6 +269,7 @@ mod tests {
         assert_eq!(vm.Y, 0);
         assert_eq!(vm.SP, 255);
         assert_eq!(vm.CC, Flag::DEFAULT);
+        assert_eq!(vm.IP, program.len());
 
         let mut size = 0;
         for x in vm.mem.iter() {
