@@ -27,10 +27,10 @@ pub enum Instr {
       SETX,  // SET regiseter X to argument
       SETY,  // SET register Y to argument
       HALT,  // HALT execution of VM
-      }
+}
 
-      #[derive(Debug, PartialEq, Clone)]
-      pub enum Flag {
+#[derive(Debug, PartialEq, Clone)]
+pub enum Flag {
       OVERFLOW,
       ZERO,
       NEGATIVE,
@@ -103,29 +103,49 @@ impl VM {
                               | Instr::SETX 
                               | Instr::SETY => self.handle_set_register(),
 
-                              // Instr::BRN
-                              // | Instr::BRZ
-                              // | Instr::BRO => self.handle_branch(),
+                              Instr::BRN
+                              | Instr::BRZ
+                              | Instr::BRO => self.handle_branch(instr.clone()),
 
                               Instr::HALT | _  => break,
                         }
                   },
-                  None => { self.PC = None; break; },
-                  _ => (),
+                  //Left => { self.PC = None; break; },
+                  _ => {break},
                   }
                   self.IP -= 1;
             }
       }
 
-      // fn handle_branch(&mut self) {
-      //       let branch_address: usize = match self.program.pop().unwrap() {
-      //             Left(x) => x as usize,
-      //             _       => self.IP,
-      //       };
+      fn handle_branch(&mut self, instr: Instr) {
+            let branch_address: usize = match self.program.pop().unwrap() {
+                  Left(x) => x as usize,
+                  _       => self.IP,
+            };
 
-      //       if 
+            match instr {
+                  Instr::BRN => {
+                        if (self.CC == Flag::NEGATIVE) {
 
-      // }
+                        }
+                  }
+
+                  Instr::BRZ => {
+                        if (self.CC == Flag::ZERO) {
+
+                        }
+                  }
+
+                  Instr::BRO => {
+                        if (self.CC == Flag::OVERFLOW) {
+
+                        }
+                  }
+
+                  _ => return
+            }
+      }
+
 
       fn handle_set_register(&mut self) {
             let arg = match self.program.pop().unwrap() {
@@ -138,7 +158,7 @@ impl VM {
                   Some(Instr::SETB) => {self.B = arg;},
                   Some(Instr::SETX) => {self.X = arg;},
                   Some(Instr::SETY) => {self.Y = arg;},
-                  _           => (),
+                  _                 => (),
             }
       }
 
@@ -180,7 +200,6 @@ impl VM {
                   Some(Instr::POPX) => {self.X = self.pop();},
                   Some(Instr::POPY) => {self.Y = self.pop();},
                   None | _ => (),
-                  
             }
       }
 
@@ -199,14 +218,18 @@ impl VM {
 
             let next_reg_value = {
                   if 255 - reg_value < arg{ 
-                  self.CC = Flag::OVERFLOW;
+                        self.CC = Flag::OVERFLOW;
+                        reg_value 
                   reg_value 
+                        reg_value 
                   } else if (reg_value + arg) == 0 { 
+                        self.CC = Flag::ZERO; 
                   self.CC = Flag::ZERO; 
-                  0
+                        self.CC = Flag::ZERO; 
+                        0
                   } else {
-                  self.CC = Flag::DEFAULT;
-                  arg + reg_value
+                        self.CC = Flag::DEFAULT;
+                        arg + reg_value
                   }
             };
 
@@ -235,14 +258,14 @@ impl VM {
 
             let next_reg_value = {
                   if reg_value < arg {
-                  self.CC = Flag::OVERFLOW;
-                  reg_value
+                        self.CC = Flag::OVERFLOW;
+                        reg_value
                   } else if reg_value - arg == 0 {
-                  self.CC = Flag::ZERO;
-                  0
+                        self.CC = Flag::ZERO;
+                        0
                   } else {
-                  self.CC = Flag::DEFAULT;
-                  reg_value - arg
+                        self.CC = Flag::DEFAULT;
+                        reg_value - arg
                   }
             };
 
